@@ -1,9 +1,6 @@
-from langchain_groq import ChatGroq
-
-from factories.llm_factory import LLMFactory
-from src.config.settings import Settings
-
 from src.factories.llm_factory import LLMFactory
+
+
 class AnswerEvaluator:
 
     def __init__(self):
