@@ -57,25 +57,6 @@ Below is your interview performance summary.
 
     st.divider()
 
-    st.subheader("📈 Performance Overview")
-
-    st.progress(85)
-
-    st.info(
-        """
-✅ Strong understanding of concepts
-
-✅ Good technical knowledge
-
-⚠ Improve confidence
-
-⚠ Give more detailed explanations
-
-⭐ Keep practicing mock interviews.
-"""
-    )
-
-    st.divider()
 
     c1, c2 = st.columns(2)
 
@@ -108,6 +89,12 @@ Below is your interview performance summary.
             ]:
 
                 if key in st.session_state:
+
+                    del st.session_state[key]
+
+            for key in list(st.session_state.keys()):
+
+                if key.startswith("answer_"):
 
                     del st.session_state[key]
 
