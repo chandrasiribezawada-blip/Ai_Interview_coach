@@ -1,4 +1,7 @@
+import os
+
 from src.loaders.pdf_loader import PDFLoader
+from src.loaders.text_loader import TextLoader
 from src.preprocess.cleaner import TextCleaner
 from src.preprocess.chunker import TextChunker
 from src.preprocess.metadata import MetadataGenerator
@@ -69,18 +72,25 @@ class InterviewPipeline:
         loader = PDFLoader(resume_path)
 
         documents = loader.load()
-
-        documents = TextCleaner.clean(documents)
-
         chunker = TextChunker()
-
-        chunks = chunker.split(documents)
-
-        chunks = MetadataGenerator.enhance(
-            chunks,
+        resume_chunks = chunker.split(TextCleaner.clean(documents))
+        resume_chunks = MetadataGenerator.enhance(
+            resume_chunks,
             document_type="resume"
         )
 
+        jd_chunks = []
+        jd_path = "data/jd/job_description.txt"
+        if os.path.isfile(jd_path):
+            jd_documents = TextCleaner.clean(TextLoader(jd_path).load())
+            if any(document.page_content for document in jd_documents):
+                jd_chunks = chunker.split(jd_documents)
+                jd_chunks = MetadataGenerator.enhance(
+                    jd_chunks,
+                    document_type="job_description"
+                )
+
+        chunks = resume_chunks + jd_chunks
         self.documents = chunks
 
         vectorstore = self.faiss_db.create(chunks)
@@ -113,8 +123,18 @@ class InterviewPipeline:
         LLM
         """
 
-        # Rewrite Query
-        rewritten_query = self.rewriter.rewrite(topic)
+        resume_context = self.retrieve_context(vectorstore, topic)
+
+        # Generate Interview Question
+        question = self.interviewer.generate_question(
+            resume_context,
+            job_description
+        )
+
+        return question
+
+    def retrieve_context(self, vectorstore, query):
+        rewritten_query = self.rewriter.rewrite(query)
 
         print("\n" + "=" * 60)
         print("Rewritten Query")
@@ -132,6 +152,11 @@ class InterviewPipeline:
             k=5
         )
 
+        if not results:
+            results = self.documents[:3]
+        if not results:
+            raise RuntimeError("No resume or job-description chunks are available for retrieval.")
+
         # Reranking
         results = self.reranker.rerank(
             rewritten_query,
@@ -142,13 +167,35 @@ class InterviewPipeline:
         # Context Refinement
         resume_context = self.refiner.refine(results)
 
-        # Generate Interview Question
-        question = self.interviewer.generate_question(
-            resume_context,
-            job_description
+        return resume_context
+
+    def evaluate_voice_answer(self, question, candidate_answer, vectorstore):
+        retrieved_context = self.retrieve_context(
+            vectorstore,
+            f"{question}\n{candidate_answer}",
+        )
+        evaluation = self.evaluator.evaluate_voice(question, candidate_answer, retrieved_context)
+        evaluation["_retrieved_context"] = retrieved_context
+        return evaluation
+
+    def generate_voice_follow_up(
+        self, next_topic, question, candidate_answer, history, vectorstore, retrieved_context=None
+    ):
+        if retrieved_context is None:
+            retrieved_context = self.retrieve_context(
+                vectorstore,
+                f"{question}\n{candidate_answer}",
+            )
+        return self.interviewer.generate_follow_up(
+            next_topic,
+            question,
+            candidate_answer,
+            history,
+            retrieved_context,
         )
 
-        return question
+    def generate_voice_report(self, topic, history):
+        return self.report.generate_voice(self.interviewer.llm, topic, history)
 
     # --------------------------------------------------------
 
