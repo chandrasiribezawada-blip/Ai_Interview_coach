@@ -202,12 +202,16 @@ class InterviewPipeline:
     def evaluate_answer(
         self,
         question,
-        candidate_answer
+        candidate_answer,
+        category="technical",
+        context="",
     ):
 
         return self.evaluator.evaluate(
             question,
-            candidate_answer
+            candidate_answer,
+            category=category,
+            context=context,
         )
 
     # --------------------------------------------------------

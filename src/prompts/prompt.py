@@ -21,10 +21,12 @@ Instructions:
 
 1. Ask ONLY ONE interview question.
 2. The question should be relevant to both the resume and job description.
-3. Start with project-related questions.
-4. Keep the difficulty medium.
-5. Do not answer the question.
-6. Wait for the candidate's response.
+3.start with technical related questions.
+4.ask a coding question if the candidate has coding experience.and difficulty should be easy.
+5.ask a project related question if the candidate has project experience.
+6. Keep the difficulty medium.
+7. Do not answer the question.
+8. Wait for the candidate's response.
 
 Interview Question:
 """
